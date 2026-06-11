@@ -27,6 +27,21 @@
     .akuts-btn{background:#2f7bd6;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:14px;font-family:inherit;cursor:pointer;line-height:1.2}
     .akuts-btn:hover{filter:brightness(1.08)}
     .akuts-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;z-index:2147483647;box-shadow:0 4px 14px rgba(0,0,0,.3);max-width:80vw;text-align:center}
+    #akuts-confirm{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:system-ui,Arial,sans-serif}
+    #akuts-confirm .akuts-cf-box{background:#fff;color:#243240;width:min(380px,90vw);border-radius:10px;padding:18px 18px 16px;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+    #akuts-confirm .akuts-cf-title{font-size:15px;font-weight:700;color:#16395b;margin-bottom:8px}
+    #akuts-confirm .akuts-cf-body{font-size:13px;color:#556;line-height:1.5;margin-bottom:16px}
+    #akuts-confirm .akuts-cf-btns{display:flex;justify-content:flex-end;gap:8px}
+    #akuts-confirm .akuts-cf-btn{border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+    #akuts-confirm .akuts-cf-cancel{background:#e9edf1;color:#3a4250}
+    #akuts-confirm .akuts-cf-cancel:hover{background:#dfe4ea}
+    #akuts-confirm .akuts-cf-ok{background:#2f7bd6;color:#fff}
+    #akuts-confirm .akuts-cf-ok:hover{filter:brightness(1.08)}
+    #akuts-confirm.akuts-dark .akuts-cf-box{background:#1f2430;color:#e6ebf4}
+    #akuts-confirm.akuts-dark .akuts-cf-title{color:#e6ebf4}
+    #akuts-confirm.akuts-dark .akuts-cf-body{color:#9aa3b2}
+    #akuts-confirm.akuts-dark .akuts-cf-cancel{background:#2c3340;color:#cdd6e5}
+    #akuts-confirm.akuts-dark .akuts-cf-cancel:hover{background:#353d4c}
 
     /* resource card - mimics a UWorld panel */
     #${PANEL_ID}{margin:14px 0;font-family:inherit;color:#333;background:#fff;border:1px solid #dde2e7;border-radius:8px;display:block;position:relative;z-index:1}
@@ -135,15 +150,17 @@
   // ---------- dark mode + expected score ----------
   let darkMode = false;
   let esOn = false;
+  let easyOn = false;
   function applyTheme() {
     const p = document.getElementById(PANEL_ID); if (p) p.classList.toggle("akuts-dark", darkMode);
     const o = document.getElementById(OVERLAY_ID); if (o) o.classList.toggle("akuts-dark", darkMode);
   }
-  chrome.storage.local.get({ dark: false, expectedScore: false }, c => { darkMode = !!c.dark; esOn = !!c.expectedScore; applyTheme(); });
+  chrome.storage.local.get({ dark: false, expectedScore: false, easy: false }, c => { darkMode = !!c.dark; esOn = !!c.expectedScore; easyOn = !!c.easy; applyTheme(); });
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
     if (changes.dark) { darkMode = !!changes.dark.newValue; applyTheme(); }
     if (changes.expectedScore) { esOn = !!changes.expectedScore.newValue; }
+    if (changes.easy) { easyOn = !!changes.easy.newValue; }
   });
 
   function toast(text) {
@@ -176,13 +193,57 @@
   function buildTagQuery(qids, sv) {
     return qids.map(q => "tag:#AK_Step" + sv + "_" + ANKING_VER + "::#UWorld::*::" + q).join(" OR ");
   }
+  const ANKI_DOWN = "Couldn't reach Anki. Make sure it's open and the Atlas add-on is installed.";
   function runBrowse(qids) {
     if (!qids.length) { toast("No matching questions found on this page."); return; }
     getSv().then(sv => {
       const query = buildTagQuery(qids, sv);
-      anki("guiBrowse", { query }).catch(e =>
-        toast("Couldn't reach Anki. Make sure it's open and the Atlas add-on is installed. (" + e + ")"));
+      if (easyOn) { easyUnsuspend(query); return; }
+      anki("guiBrowse", { query }).catch(e => toast(ANKI_DOWN + " (" + e + ")"));
     });
+  }
+  // Easy mode: count matches, confirm with the locked number, then unsuspend.
+  function easyUnsuspend(query) {
+    anki("cardsForQueries", { queries: [query] }).then(r => {
+      const cards = (r && r[0]) || [];
+      const matched = cards.length;
+      const locked = cards.filter(c => c.suspended).length;
+      if (!matched) { toast("None of these matched a card in your deck yet."); return; }
+      if (!locked) { toast("All " + matched + " matching card" + (matched === 1 ? " is" : "s are") + " already in your reviews."); return; }
+      showConfirm(matched, locked, () => {
+        anki("unsuspendForQueries", { queries: [query] }).then(r2 => {
+          const n = (r2 && r2[0] && r2[0].unlocked) || 0;
+          toast("Added " + n + " card" + (n === 1 ? "" : "s") + " to your reviews.");
+        }).catch(e => toast(ANKI_DOWN + " (" + e + ")"));
+      });
+    }).catch(e => toast(ANKI_DOWN + " (" + e + ")"));
+  }
+  function showConfirm(matched, locked, onYes) {
+    const old = document.getElementById("akuts-confirm"); if (old) old.remove();
+    const o = document.createElement("div");
+    o.id = "akuts-confirm";
+    o.classList.toggle("akuts-dark", darkMode);
+    const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+    function close() { document.removeEventListener("keydown", onKey, true); o.remove(); }
+    o.addEventListener("click", e => { if (e.target === o) close(); });
+    const box = document.createElement("div"); box.className = "akuts-cf-box";
+    const h = document.createElement("div"); h.className = "akuts-cf-title"; h.textContent = "Add cards to your reviews?";
+    const body = document.createElement("div"); body.className = "akuts-cf-body";
+    const subj = matched === locked
+      ? ("All " + locked + " matching card" + (locked === 1 ? "" : "s"))
+      : (locked + " of " + matched + " matching cards");
+    body.textContent = subj + " " + (locked === 1 ? "is" : "are") + " locked. Unlock " + (locked === 1 ? "it" : "them")
+      + " so " + (locked === 1 ? "it shows" : "they show") + " up when you study?";
+    const btns = document.createElement("div"); btns.className = "akuts-cf-btns";
+    const cancel = document.createElement("button"); cancel.className = "akuts-cf-btn akuts-cf-cancel"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", close);
+    const ok = document.createElement("button"); ok.className = "akuts-cf-btn akuts-cf-ok"; ok.textContent = "Unlock " + locked;
+    ok.addEventListener("click", () => { close(); onYes(); });
+    btns.appendChild(cancel); btns.appendChild(ok);
+    box.appendChild(h); box.appendChild(body); box.appendChild(btns);
+    o.appendChild(box);
+    (document.body || document.documentElement).appendChild(o);
+    document.addEventListener("keydown", onKey, true);
   }
   function makeBtn(label, getQids) {
     const b = document.createElement("button");

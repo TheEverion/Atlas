@@ -2,16 +2,18 @@ const sel = document.getElementById("sv");
 const saved = document.getElementById("saved");
 const darkToggle = document.getElementById("darkToggle");
 const esToggle = document.getElementById("esToggle");
+const easyToggle = document.getElementById("easyToggle");
 
 function applyDark(on) {
   document.body.classList.toggle("dark", on);
   darkToggle.checked = on;
 }
 
-chrome.storage.local.get({ sv: 1, dark: false, expectedScore: false }, cfg => {
+chrome.storage.local.get({ sv: 1, dark: false, expectedScore: false, easy: false }, cfg => {
   sel.value = String(cfg.sv);
   applyDark(!!cfg.dark);
   esToggle.checked = !!cfg.expectedScore;
+  easyToggle.checked = !!cfg.easy;
 });
 
 sel.addEventListener("change", () => {
@@ -30,4 +32,8 @@ darkToggle.addEventListener("change", () => {
 
 esToggle.addEventListener("change", () => {
   chrome.storage.local.set({ expectedScore: esToggle.checked });
+});
+
+easyToggle.addEventListener("change", () => {
+  chrome.storage.local.set({ easy: easyToggle.checked });
 });
