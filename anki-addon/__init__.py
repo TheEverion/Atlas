@@ -207,6 +207,33 @@ def cards_for_queries(queries):
     return out
 
 
+def unsuspend_for_queries(queries):
+    """For each search, unsuspend any matching cards that are currently
+    suspended. Returns per-query {matched, unlocked} counts so the UI can
+    show how many cards were actually added to reviews."""
+    col = _collection()
+    out = []
+    for q in (queries or []):
+        try:
+            cids = list(col.find_cards(q))
+        except Exception:
+            cids = []
+        locked = []
+        for cid in cids:
+            try:
+                if col.get_card(cid).queue == -1:   # -1 == suspended
+                    locked.append(cid)
+            except Exception:
+                pass
+        if locked:
+            try:
+                col.sched.unsuspend_cards(locked)
+            except AttributeError:
+                col.sched.unsuspendCards(locked)    # older Anki
+        out.append({"matched": len(cids), "unlocked": len(locked)})
+    return out
+
+
 def maturity_for_queries(queries):
     """For each Anki search, classify its cards into maturity buckets.
     new / learning / young (<21d) / mature (>=21d) / suspended."""
@@ -262,6 +289,8 @@ def dispatch(action, params):
         return maturity_for_queries(params.get("queries"))
     if action == "cardsForQueries":
         return cards_for_queries(params.get("queries"))
+    if action == "unsuspendForQueries":
+        return unsuspend_for_queries(params.get("queries"))
     raise Exception("Atlas Bridge does not support action: %s" % action)
 
 
