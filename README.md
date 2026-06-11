@@ -10,6 +10,11 @@ each topic — all without leaving the page.
   <img src="assets/buttons.png" alt="Atlas buttons on the UWorld results page" width="640">
 </p>
 
+> **New in v1.7 — Easy mode (auto-unsuspend).** A new toggle that drops your
+> matched cards straight into your review queue with one click — no Browser, no
+> Cmd+A, no right-clicking. It always asks first and shows the count. Off by
+> default. [Jump to details ↓](#easy-mode-auto-unsuspend--new-in-v17)
+
 Atlas has two parts that talk to each other over `127.0.0.1:8765`:
 
 | Part | Folder | What it is |
@@ -29,6 +34,7 @@ your Anki collection.
 - **View resource images inline** — First Aid and Sketchy images open right over the question, no tab switching.
 - **Picks the right deck automatically** based on your exam: Step 1 / COMLEX 1, Step 2 / COMLEX 2, or Step 3.
 - **Optional dark mode** and an **Expected Score (Beta)** estimate from your card maturity.
+- **Easy mode (auto-unsuspend)** *(new in v1.7)* — optionally unlock the matched cards straight into your review queue with one click instead of opening Anki, after a quick confirm.
 - **No page refresh needed** — change your exam in the popup and it applies on your next click.
 
 ### The resources panel
@@ -64,6 +70,22 @@ The **Watch** links open the matching video for that subtopic:
 <p align="center">
   <img src="assets/dark-mode.gif" alt="Toggling dark mode" width="760">
 </p>
+
+### Easy mode (auto-unsuspend) — new in v1.7
+
+Flip on **Easy mode** and the buttons stop opening Anki. Instead, Atlas checks the
+matched cards and, if any are suspended (locked), asks before unlocking them into
+your reviews — one click, no Browser, no Cmd+A, no right-clicking. It always shows
+the count first, so a stray click can't quietly dump cards into your queue. If
+everything's already unlocked, it just tells you and does nothing.
+
+<p align="center">
+  <img src="assets/easy-mode-toggle.png" alt="Easy mode toggle in the popup" width="300">
+  &nbsp;&nbsp;
+  <img src="assets/easy-mode-confirm.png" alt="Easy mode confirm dialog" width="330">
+</p>
+
+Off by default — with it off, the buttons open Anki exactly as before.
 
 ---
 
@@ -118,6 +140,7 @@ Optional toggles in the popup:
 
 - **Dark mode** — dark styling for the popup.
 - **Expected Score (Beta)** — an estimate derived from how mature your linked cards are.
+- **Easy mode (auto-unsuspend)** — unlock matched cards into your reviews with one click instead of opening Anki (asks first, shows the count). Off by default.
 
 ---
 
@@ -144,6 +167,14 @@ in-page requests). Instead its **background service worker** makes the calls to
 thread (the collection isn't thread-safe, so every read is marshalled there).
 The bridge mirrors the slice of the AnkiConnect API that Atlas needs, so it
 works as a drop-in.
+
+---
+
+## Changelog
+
+**v1.7** — Added **Easy mode (auto-unsuspend)**: one-click unlock of the matched cards straight into your review queue, with a confirm that always shows the count. Off by default; the existing open-in-Anki behavior is unchanged when it's off.
+
+**v1.6** — Resources panel grouped by source, First Aid / Sketchy image overlays (press F / S), Watch-video links, dark mode, and an Expected Score (Beta) estimate.
 
 ---
 
