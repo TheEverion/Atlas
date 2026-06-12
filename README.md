@@ -347,9 +347,3 @@ Atlas is an independent study tool.
 It is not affiliated with UWorld, AnKing, Anki, Sketchy, Boards & Beyond, Bootcamp, Pathoma, Physeo, First Aid, or any other third-party resource.
 
 Use it as a study helper, not as an excuse to do 900 cards at 2 a.m.
-
-Atlas is an independent study tool.
-
-It is not affiliated with UWorld, AnKing, Anki, Sketchy, Boards & Beyond, Bootcamp, Pathoma, Physeo, First Aid, or any other third-party resource.
-
-Use it as a study helper, not as an excuse to do 900 cards at 2 a.m.
