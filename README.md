@@ -1,28 +1,30 @@
 <p align="center">
-  <img src="assets/buttons.png" alt="Atlas buttons on UWorld results page" width="900">
+  <img src="assets/atlas-banner.png" alt="Atlas Anki banner" width="900">
 </p>
 
 <div align="center">
 
 # Atlas
 
-### Stop digging through AnKing tags like a raccoon in a dumpster.
+### Stop hunting tags like a raccoon in a dumpster.
 
 **Atlas connects your UWorld results to AnKing cards, resource tags, videos, and images — directly from your browser.**
 
-<a href="https://ko-fi.com/atlasanki">
-  <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support Atlas on Ko-fi">
-</a>
+<p>
+  <a href="https://chromewebstore.google.com/detail/atlas/nldpifnmnejhebgajmkfdijgianbahkj?hl=en-US">
+    <img alt="Install from Chrome Web Store" src="https://img.shields.io/badge/Install-Chrome_Web_Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white">
+  </a>
+  <a href="https://ankiweb.net/shared/info/147357374">
+    <img alt="Install from AnkiWeb" src="https://img.shields.io/badge/Install-AnkiWeb-2B90D9?style=for-the-badge">
+  </a>
+  <a href="https://ko-fi.com/atlasanki">
+    <img alt="Support Atlas on Ko-fi" src="https://img.shields.io/badge/Support-Ko--fi-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white">
+  </a>
+</p>
+
+<img alt="Version" src="https://img.shields.io/badge/version-1.7-blue?style=flat-square">
 
 <br><br>
-
-<img alt="Version" src="https://img.shields.io/badge/version-1.7-blue?style=for-the-badge">
-<img alt="Anki" src="https://img.shields.io/badge/Anki-Bridge-2b90d9?style=for-the-badge">
-<img alt="Chrome Extension" src="https://img.shields.io/badge/Chrome_Extension-Atlas-34a853?style=for-the-badge&logo=googlechrome&logoColor=white">
-<img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-76%25-f7df1e?style=for-the-badge&logo=javascript&logoColor=black">
-<img alt="Python" src="https://img.shields.io/badge/Python-19%25-3776ab?style=for-the-badge&logo=python&logoColor=white">
-
-<br>
 
 **For students who live inside UWorld, Anki, and 47 browser tabs.**
 
@@ -30,33 +32,91 @@
 
 ---
 
-## Why Atlas exists
+## What is Atlas?
 
-UWorld tells you what you missed.
+**Atlas** is a browser extension + Anki add-on that connects your **UWorld results** to your **AnKing Anki deck**.
 
-AnKing probably has the cards you need.
+When you review a UWorld block, Atlas adds buttons that help you open matching AnKing cards, see which resources cover the topic, view images, jump to videos, and optionally unsuspend matched cards with Easy Mode.
 
-But finding those cards, checking resource tags, opening videos, and deciding what to unsuspend can turn into a tiny side quest.
+Basically:
 
-**Atlas removes the side quest.**
-
-It adds buttons to the UWorld results page so you can instantly open matching AnKing cards, review related resources, view images, and optionally unsuspend cards with one click.
+**UWorld tells you what you missed. Atlas helps you find what to study next.**
 
 ---
 
-## What Atlas does
+## Quick install
 
-| Button / Feature | What it helps you do |
-|---|---|
-| **Missed** | Open AnKing cards linked to the questions you got wrong. |
-| **All** | Open matching cards for the whole block. |
-| **Marked** | Focus only on questions you flagged. |
-| **Resources Panel** | See related tags from B&B, Pathoma, Sketchy, Bootcamp, Physeo, First Aid, and more. |
-| **Image Overlay** | Open First Aid / Sketchy images without leaving the question page. |
-| **Watch Links** | Jump to matching resource videos when available. |
-| **Easy Mode** | Auto-unsuspend matched cards after confirmation. |
-| **Expected Score Beta** | Estimate performance from card maturity. |
-| **Dark Mode** | Save your eyes during the 1 a.m. “just one more block” lie. |
+Atlas has two parts.
+
+You need **both**.
+
+| Part                         | What it does                                          | Install                                                                                                      |
+| ---------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Atlas Browser Extension**  | Adds Atlas buttons and panels to UWorld               | [Chrome Web Store](https://chromewebstore.google.com/detail/atlas/nldpifnmnejhebgajmkfdijgianbahkj?hl=en-US) |
+| **Atlas Bridge Anki Add-on** | Lets the extension talk to your local Anki collection | [AnkiWeb](https://ankiweb.net/shared/info/147357374)                                                         |
+
+---
+
+## Installation guide
+
+### 1. Install the browser extension
+
+Install the Atlas browser extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/atlas/nldpifnmnejhebgajmkfdijgianbahkj?hl=en-US).
+
+After installing it, pin Atlas to your browser toolbar for quick access.
+
+Atlas works on Chrome and other Chromium-based browsers such as Brave and Edge.
+
+---
+
+### 2. Install the Anki add-on
+
+Install Atlas Bridge from [AnkiWeb](https://ankiweb.net/shared/info/147357374).
+
+Then restart Anki.
+
+Atlas Bridge starts automatically when Anki opens.
+
+---
+
+### 3. Keep Anki open
+
+Atlas needs Anki to be open while you use UWorld.
+
+The browser extension is the interface.
+The Anki add-on is the bridge.
+
+If Anki is closed, Atlas cannot open cards, check tags, show card data, or use Easy Mode.
+
+---
+
+### 4. Review a UWorld block
+
+1. Open Anki.
+2. Open UWorld in your browser.
+3. Finish or review a UWorld block.
+4. Go to the UWorld results page.
+5. Use the Atlas buttons to open matching AnKing cards.
+
+<p align="center">
+  <img src="assets/buttons.png" alt="Atlas buttons on UWorld results page" width="850">
+</p>
+
+---
+
+## What Atlas helps you do
+
+| Feature                           | What it does                                                      |
+| --------------------------------- | ----------------------------------------------------------------- |
+| **Missed / Marked / All buttons** | Opens matching AnKing cards from your UWorld results.             |
+| **Resource panel**                | Shows which third-party resources cover the same topic.           |
+| **Image overlay**                 | Opens First Aid and Sketchy images directly on the question page. |
+| **Watch links**                   | Jumps to matching resource videos when available.                 |
+| **Exam selector**                 | Supports Step 1 / COMLEX 1, Step 2 / COMLEX 2, and Step 3.        |
+| **Easy Mode**                     | Auto-unsuspends matched cards after confirmation.                 |
+| **High Yield Only**               | Focuses Atlas buttons on high-yield cards when available.         |
+| **Expected Score Beta**           | Estimates performance using linked card maturity.                 |
+| **Dark mode**                     | Makes the popup easier on the eyes.                               |
 
 ---
 
@@ -65,267 +125,170 @@ It adds buttons to the UWorld results page so you can instantly open matching An
 ### UWorld buttons
 
 <p align="center">
-  <img src="assets/buttons.png" alt="Atlas buttons on UWorld results page" width="900">
+  <img src="assets/buttons.png" alt="Atlas buttons on UWorld results page" width="850">
 </p>
+
+Atlas adds buttons directly to your UWorld results page so you can open matching cards from **Missed**, **Marked**, or **All** questions.
 
 ---
 
 ### Resource panel
 
-See which resources cover the topic, grouped by source.
-
 <p align="center">
-  <img src="assets/resources-panel.png" alt="Atlas resources panel" width="900">
+  <img src="assets/resources-panel.png" alt="Atlas resources panel" width="850">
 </p>
+
+Atlas groups related AnKing resource tags by source, so you can quickly see what covers the topic.
 
 ---
 
 ### Image overlay
 
-Press **F** for First Aid or **S** for Sketchy.
-
 <p align="center">
-  <img src="assets/image-demo.gif" alt="Atlas image overlay demo" width="900">
+  <img src="assets/image-demo.gif" alt="Atlas image overlay demo" width="850">
 </p>
+
+Press **F** for First Aid images or **S** for Sketchy images without switching tabs.
 
 ---
 
 ### Watch links
 
-Open the matching resource video for the subtopic.
-
 <p align="center">
-  <img src="assets/watch-demo.gif" alt="Atlas watch links demo" width="900">
+  <img src="assets/watch-demo.gif" alt="Atlas watch links demo" width="850">
 </p>
+
+Open matching resource videos directly from the Atlas panel when links are available.
 
 ---
 
 ### Dark mode
 
-Because your retina deserves mercy.
-
 <p align="center">
-  <img src="assets/dark-mode.gif" alt="Atlas dark mode demo" width="900">
+  <img src="assets/dark-mode.gif" alt="Atlas dark mode demo" width="850">
 </p>
+
+Because your eyes deserve mercy.
 
 ---
 
 ## Easy Mode
 
-Easy Mode is for when you do **not** want to manually open Anki Browser, select cards, right-click, and unsuspend.
+Easy Mode is for when you do **not** want to manually open the Anki Browser, select cards, right-click, and unsuspend.
 
-When Easy Mode is on, Atlas checks the matched cards and asks before unlocking them into your review queue.
+With Easy Mode **off**, Atlas opens the matching cards in the Anki Browser.
+
+With Easy Mode **on**, Atlas checks the matched cards and asks before unsuspending them into your review queue.
+
+It always shows the card count first, so a stray click cannot quietly dump cards into your reviews.
 
 <p align="center">
-  <img src="assets/easy-mode-toggle.png" alt="Atlas Easy Mode toggle" width="420">
+  <img src="assets/easy-mode-toggle.png" alt="Atlas Easy Mode toggle" width="350">
 </p>
 
 <p align="center">
-  <img src="assets/easy-mode-confirm.png" alt="Atlas Easy Mode confirmation dialog" width="520">
+  <img src="assets/easy-mode-confirm.png" alt="Atlas Easy Mode confirmation dialog" width="450">
 </p>
 
 Easy Mode is **off by default**.
 
-With Easy Mode off, Atlas keeps the normal behavior and opens matching cards in Anki.
+---
+
+## Basic usage
+
+Open the Atlas popup from your browser toolbar.
+
+Choose your exam mode:
+
+* **Step 1 / COMLEX 1**
+* **Step 2 / COMLEX 2**
+* **Step 3**
+
+<p align="center">
+  <img src="assets/popup.png" alt="Atlas popup" width="400">
+</p>
+
+Then review a UWorld block and use the Atlas buttons on the results page.
 
 ---
 
-## How it works
+## How Atlas works
 
 Atlas has two parts:
 
-| Part | Folder | What it does |
-|---|---|---|
-| **Atlas Bridge** | `anki-addon/` | Local Anki add-on that lets the browser extension talk to Anki. |
-| **Atlas Extension** | `chrome-extension/` | Browser extension that adds Atlas buttons and panels to UWorld. |
+| Part                         | Purpose                                                         |
+| ---------------------------- | --------------------------------------------------------------- |
+| **Atlas Browser Extension**  | Adds Atlas buttons and panels to UWorld.                        |
+| **Atlas Bridge Anki Add-on** | Lets the extension communicate with your local Anki collection. |
 
 Both are required.
 
-The extension is the interface.  
-The Anki add-on is the bridge.
-
-Atlas talks to Anki locally through:
-
-```txt
-127.0.0.1:8765
-```
+The extension is what you click.
+The Anki add-on is what lets those clicks talk to your Anki deck.
 
 ---
 
-## Installation
+## Troubleshooting
 
-You need to install both pieces.
+### Atlas says it is not connected
 
-### 1. Install Atlas Bridge in Anki
+Make sure:
 
-1. Open Anki.
-2. Go to:
+1. Anki is open.
+2. Atlas Bridge is installed in Anki.
+3. You restarted Anki after installing the add-on.
+4. The Atlas browser extension is installed.
+5. You are on a UWorld results/review page.
 
-```txt
-Tools → Add-ons → View Files
-```
-
-3. Create a new folder named:
-
-```txt
-atlas_bridge
-```
-
-4. Copy everything from:
-
-```txt
-anki-addon/
-```
-
-into that folder.
-
-You should copy files like:
-
-```txt
-__init__.py
-config.json
-config.md
-manifest.json
-```
-
-5. Restart Anki.
-
-Atlas Bridge should start automatically.
+Then open the Atlas popup again.
 
 ---
 
-### 2. Install the browser extension
+### The buttons appear, but cards do not open
 
-1. Open your browser extension page:
+Check that:
 
-```txt
-chrome://extensions
-```
-
-or, if you use Brave:
-
-```txt
-brave://extensions
-```
-
-2. Turn on **Developer mode**.
-3. Click **Load unpacked**.
-4. Select the repo folder:
-
-```txt
-chrome-extension/
-```
-
-5. Pin Atlas to your toolbar.
+* Anki is open.
+* Your AnKing deck is installed.
+* Atlas Bridge is installed and enabled in Anki.
+* You restarted Anki after installing Atlas Bridge.
+* You are reviewing a UWorld block with results available.
 
 ---
 
-## Usage
+### Easy Mode does not unsuspend anything
 
-1. Open Anki.
-2. Open UWorld.
-3. Review a block.
-4. Use the Atlas buttons on the UWorld results page.
-5. Choose what you want to do:
-   - open missed cards,
-   - open all related cards,
-   - open marked cards,
-   - view resources,
-   - view images,
-   - or use Easy Mode.
+Check that:
 
-<p align="center">
-  <img src="assets/popup.png" alt="Atlas popup" width="420">
-</p>
+* Easy Mode is turned on in the popup.
+* The matched cards are actually suspended.
+* Anki is open.
+* Atlas Bridge is installed and running.
+* You confirmed the unsuspend dialog.
 
-<p align="center">
-  <img src="assets/exam-dropdown.png" alt="Atlas exam dropdown" width="420">
-</p>
+If no suspended cards are found, Atlas will not add anything to your review queue.
 
 ---
 
-## Supported exam modes
+### I already use AnkiConnect
 
-Atlas can switch between:
+Atlas Bridge uses its own local connection to Anki.
 
-| Exam mode | Use case |
-|---|---|
-| **Step 1 / COMLEX 1** | Preclinical cards and resources. |
-| **Step 2 / COMLEX 2** | Clinical shelf / Step 2 style studying. |
-| **Step 3** | Step 3 mode. |
+If you run into connection problems while using AnkiConnect, disable one of the two add-ons and restart Anki.
 
-Change the exam from the popup.
-
-No page refresh needed.
-
----
-
-## Configuration
-
-Atlas Bridge settings live in:
-
-```txt
-config.json
-```
-
-You can edit them from Anki:
-
-```txt
-Tools → Add-ons → Atlas Bridge → Config
-```
-
-Main settings:
-
-| Setting | Default | What it does |
-|---|---:|---|
-| `port` | `8765` | Local port used by Atlas Bridge. |
-| `extraOrigins` | `[]` | Extra allowed extension or website origins. Usually leave empty. |
-
-Restart Anki after changing settings.
-
----
-
-## Important note about AnkiConnect
-
-Atlas Bridge uses the same default port as AnkiConnect:
-
-```txt
-8765
-```
-
-Only one app can use that port at a time.
-
-If you already use AnkiConnect, you can either:
-
-- disable AnkiConnect while using Atlas, or
-- change Atlas Bridge to another port and update the extension to match.
-
-Atlas Bridge only exposes the actions Atlas needs.
-
----
-
-## Project structure
-
-```txt
-Atlas/
-├── anki-addon/          # Atlas Bridge for Anki
-├── chrome-extension/    # Browser extension
-├── assets/              # README screenshots and GIFs
-├── PRIVACY.md           # Privacy policy
-└── README.md
-```
+Most users do not need to change any settings.
 
 ---
 
 ## Privacy
 
-Atlas is designed to run locally between your browser and Anki.
+Atlas is designed to work locally between your browser and Anki.
 
-It communicates through:
+It does not need your AnkiWeb login.
 
-```txt
-127.0.0.1:8765
-```
+It does not upload your Anki collection to a server.
+
+Easy Mode only unsuspends cards after showing a confirmation first.
 
 Read the full privacy policy here:
 
@@ -335,9 +298,9 @@ Read the full privacy policy here:
 
 ## Support Atlas
 
-Atlas is made for students trying to survive UWorld, Anki, and the eternal battle against suspended cards.
+Atlas is free.
 
-If Atlas saves you clicks, confusion, or one tiny academic breakdown, you can support it here:
+Support helps with bug fixes, updates, UWorld/Anki compatibility, and new features.
 
 <p align="center">
   <a href="https://ko-fi.com/atlasanki">
@@ -347,26 +310,43 @@ If Atlas saves you clicks, confusion, or one tiny academic breakdown, you can su
 
 ---
 
+## Links
+
+| Link             | URL                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| Chrome Web Store | [Install Atlas](https://chromewebstore.google.com/detail/atlas/nldpifnmnejhebgajmkfdijgianbahkj?hl=en-US) |
+| AnkiWeb Add-on   | [Install Atlas Bridge](https://ankiweb.net/shared/info/147357374)                                         |
+| Ko-fi            | [Support Atlas](https://ko-fi.com/atlasanki)                                                              |
+| Privacy Policy   | [PRIVACY.md](PRIVACY.md)                                                                                  |
+
+---
+
 ## Changelog
 
 ### v1.7
 
-- Added **Easy Mode**.
-- Added one-click auto-unsuspend after confirmation.
-- Shows card count before unlocking cards.
-- Keeps normal open-in-Anki behavior when Easy Mode is off.
+* Added **Easy Mode**.
+* Added one-click auto-unsuspend after confirmation.
+* Shows card count before unlocking cards.
+* Keeps normal open-in-Anki behavior when Easy Mode is off.
 
 ### v1.6
 
-- Added grouped resource panel.
-- Added First Aid and Sketchy image overlays.
-- Added video watch links.
-- Added dark mode.
-- Added Expected Score Beta.
+* Added grouped resource panel.
+* Added First Aid and Sketchy image overlays.
+* Added video watch links.
+* Added dark mode.
+* Added Expected Score Beta.
 
 ---
 
 ## Disclaimer
+
+Atlas is an independent study tool.
+
+It is not affiliated with UWorld, AnKing, Anki, Sketchy, Boards & Beyond, Bootcamp, Pathoma, Physeo, First Aid, or any other third-party resource.
+
+Use it as a study helper, not as an excuse to do 900 cards at 2 a.m.
 
 Atlas is an independent study tool.
 
