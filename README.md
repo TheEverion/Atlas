@@ -10,10 +10,10 @@ each topic — all without leaving the page.
   <img src="assets/buttons.png" alt="Atlas buttons on the UWorld results page" width="640">
 </p>
 
-> **New in v1.7 — Easy mode (auto-unsuspend).** A new toggle that drops your
-> matched cards straight into your review queue with one click — no Browser, no
-> Cmd+A, no right-clicking. It always asks first and shows the count. Off by
-> default. [Jump to details ↓](#easy-mode-auto-unsuspend--new-in-v17)
+> **New in v2.0 — a redesigned popup, a High Yield Only filter, and a richer
+> Expected Score.** Plus **Easy mode (auto-unsuspend)**: drop your matched cards
+> straight into your review queue with one click — it asks first and shows the
+> count. Details below.
 
 Atlas has two parts that talk to each other over `127.0.0.1:8766`:
 
@@ -33,8 +33,10 @@ your Anki collection.
 - **See every resource that covers the topic.** Atlas pulls the third-party tags off your cards and lays them out by source (Sketchy, Boards & Beyond, Bootcamp, Physeo, First Aid…), with one-click links.
 - **View resource images inline** — First Aid and Sketchy images open right over the question, no tab switching.
 - **Picks the right deck automatically** based on your exam: Step 1 / COMLEX 1, Step 2 / COMLEX 2, or Step 3.
-- **Optional dark mode** and an **Expected Score (Beta)** estimate from your card maturity.
-- **Easy mode (auto-unsuspend)** *(new in v1.7)* — optionally unlock the matched cards straight into your review queue with one click instead of opening Anki, after a quick confirm.
+- **High Yield Only** *(new in v2.0)* — limit the buttons to high-yield AnKing cards for a faster pass.
+- **Expected Score (Beta)** — a per-block estimate of how prepared you were on the AnKing-covered questions, with a "best-prepared misses" list to review first.
+- **Optional dark mode.**
+- **Easy mode (auto-unsuspend)** — optionally unlock the matched cards straight into your review queue with one click instead of opening Anki, after a quick confirm.
 - **No page refresh needed** — change your exam in the popup and it applies on your next click.
 
 ### The resources panel
@@ -87,6 +89,17 @@ everything's already unlocked, it just tells you and does nothing.
 
 Off by default — with it off, the buttons open Anki exactly as before.
 
+### Expected Score (Beta)
+
+After a block, Atlas estimates how prepared you actually were on the questions your
+AnKing cards cover — your expected vs. actual score, the gap, a confidence level,
+and a list of your best-prepared misses you can open straight in Anki. It weighs
+card maturity by yield and is meant as a guide, not a grade.
+
+<p align="center">
+  <img src="assets/expected-score.png" alt="Expected Score panel" width="520">
+</p>
+
 ---
 
 ## Installation
@@ -130,16 +143,15 @@ add-on knows to trust it without any setup.
 2. Set your exam in the Atlas popup, then use the buttons on the UWorld results page.
 
 <p align="center">
-  <img src="assets/popup.png" alt="Atlas popup" width="300">
-  &nbsp;&nbsp;
-  <img src="assets/exam-dropdown.png" alt="Exam selector" width="260">
+  <img src="assets/popup-v2.png" alt="Atlas popup" width="300">
 </p>
 
-Optional toggles in the popup:
+Toggles in the popup:
 
-- **Dark mode** — dark styling for the popup.
-- **Expected Score (Beta)** — an estimate derived from how mature your linked cards are.
 - **Easy mode (auto-unsuspend)** — unlock matched cards into your reviews with one click instead of opening Anki (asks first, shows the count). Off by default.
+- **High Yield Only** — restrict the buttons to high-yield AnKing cards.
+- **Expected Score (Beta)** — show the post-block preparedness estimate.
+- **Dark mode** — dark styling for the popup.
 
 ---
 
@@ -170,6 +182,8 @@ works as a drop-in.
 ---
 
 ## Changelog
+
+**v2.0** — Redesigned popup (Study actions / Extras, with a live "Ready" status), a new **High Yield Only** filter, a richer **Expected Score (Beta)** panel (expected vs. actual, gap, confidence, and best-prepared misses), and the bridge moved to port **8766** so it runs alongside AnkiConnect.
 
 **v1.7** — Added **Easy mode (auto-unsuspend)**: one-click unlock of the matched cards straight into your review queue, with a confirm that always shows the count. Off by default; the existing open-in-Anki behavior is unchanged when it's off.
 
