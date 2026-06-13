@@ -175,6 +175,10 @@ With Easy Mode **on**, Atlas checks the matched cards and asks before unsuspendi
 It always shows the card count first, so a stray click cannot quietly dump cards into your reviews.
 
 <p align="center">
+  <img src="assets/easy-mode-demo.gif" alt="Atlas Easy Mode in action" width="850">
+</p>
+
+<p align="center">
   <img src="assets/easy-mode-toggle.png" alt="Atlas Easy Mode toggle" width="350">
 </p>
 
