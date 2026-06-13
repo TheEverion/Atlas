@@ -126,14 +126,12 @@ The bridge starts automatically and listens on `127.0.0.1:8766`.
 
 ### 2. Browser extension (Atlas)
 
-1. Go to `chrome://extensions` (or `brave://extensions`).
-2. Turn on **Developer mode** (top-right).
-3. Click **Load unpacked** and select this repo's
-   [`chrome-extension/`](chrome-extension) folder.
-4. Pin Atlas to your toolbar if you like.
+Install it from the Chrome Web Store (works in Chrome, Brave, and Edge):
 
-The extension's ID is fixed (via the `key` in its manifest), which is how the
-add-on knows to trust it without any setup.
+**→ [Atlas on the Chrome Web Store](https://chromewebstore.google.com/detail/atlas/nldpifnmnejhebgajmkfdijgianbahkj)**
+
+Then pin Atlas to your toolbar. That's it — the add-on already trusts the
+published extension, so there's nothing else to set up.
 
 ---
 
