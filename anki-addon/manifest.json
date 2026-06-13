@@ -2,6 +2,7 @@
   "package": "atlas_bridge",
   "name": "Atlas Bridge (for the Atlas UWorld extension)",
   "author": "Atlas",
+  "human_version": "2.0",
   "conflicts": [],
   "mod": 0
 }
