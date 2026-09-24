@@ -1,10 +1,13 @@
 # Atlas Bridge
 
-You don't need to configure anything here. Click **Config** to open the Atlas
-status window, which just shows whether Anki and the browser extension are
-talking to each other.
+You don't need to configure anything here. Use the **Atlas** menu in Anki's menu
+bar — it has the status window and any open block sessions.
 
-_Advanced:_ this add-on listens on local port **8766** (deliberately not
-AnkiConnect's 8765, so both can run at once). Only change `port` if 8766 is
-already taken on your machine — and then point the Atlas extension at the same
-port. Restart Anki after any change.
+- `blockReschedule` — whether an Atlas block session counts as real reviews
+  (`true`) or is preview only, changing no scheduling (`false`). Toggle it from
+  the **Atlas** menu rather than editing this.
+- `port` — this add-on listens on local port **8766** (deliberately not
+  AnkiConnect's 8765, so both can run at once). Only change it if 8766 is already
+  taken on your machine — and then point the Atlas extension at the same port.
+
+Restart Anki after any change here.

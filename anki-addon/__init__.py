@@ -31,7 +31,7 @@ from aqt import mw, gui_hooks
 from aqt.utils import tooltip
 
 API_VERSION = 6
-ADDON_VERSION = "2.0"
+ADDON_VERSION = "2.9"
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8766
 # Atlas's extension ids (derived from the manifest "key"). Requests from these
@@ -61,11 +61,35 @@ def _cfg():
         return {}
 
 
+def _set_cfg(key, value):
+    try:
+        cfg = mw.addonManager.getConfig(__name__) or {}
+        cfg[key] = value
+        mw.addonManager.writeConfig(__name__, cfg)
+        return True
+    except Exception:
+        return False
+
+
 def _port():
     try:
         return int(_cfg().get("port", DEFAULT_PORT))
     except Exception:
         return DEFAULT_PORT
+
+
+# Whether block sessions count as real reviews. This lives on the Anki side, not in
+# the browser popup: it decides what happens to the user's scheduling, so it belongs
+# next to the collection it affects (and the popup was getting crowded).
+def _block_reschedule():
+    return _cfg().get("blockReschedule", True) is not False
+
+
+def _set_block_reschedule(on):
+    _set_cfg("blockReschedule", bool(on))
+    tooltip("Atlas: block reps %s." % (
+        "count as real reviews" if on else "are preview only - no scheduling change"),
+        period=3500)
 
 
 def _allowed_origins():
@@ -272,6 +296,363 @@ def unsuspend_for_queries(queries, yields=None):
     return out
 
 
+# --------------------------- block sessions ---------------------------
+# A "block session" is: unsuspend what a UWorld block matched, gather it into a
+# filtered deck, study just that, then put everything back.
+#
+# Filtered decks cannot gather suspended, buried, or already-filtered cards - see
+# the hint button in aqt/filtered_deck.py, whose whole job is listing cards excluded
+# for those reasons. So unsuspending FIRST is mandatory, and that is exactly why the
+# rollback has to exist: we record the cards we unlocked so finishing can re-lock
+# those and nothing else.
+
+def _sessions_path():
+    # user_files survives add-on updates; the rest of the add-on folder does not.
+    d = os.path.join(os.path.dirname(__file__), "user_files")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except Exception:
+        pass
+    return os.path.join(d, "sessions.json")
+
+
+def _load_sessions():
+    try:
+        with open(_sessions_path(), "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _save_sessions(sessions):
+    try:
+        with open(_sessions_path(), "w", encoding="utf-8") as fh:
+            json.dump(sessions, fh)
+    except Exception:
+        pass
+
+
+def _ids2str(ids):
+    return "(" + ",".join(str(int(i)) for i in ids) + ")"
+
+
+def _matching_cards(col, query, want):
+    """Card ids for a search, optionally narrowed to a set of yield levels."""
+    try:
+        cids = list(col.find_cards(query))
+    except Exception:
+        return []
+    if want is None:
+        return cids
+    out = []
+    for cid in cids:
+        try:
+            if _yield_of(col.get_card(cid).note().tags) in want:
+                out.append(cid)
+        except Exception:
+            continue
+    return out
+
+
+def _next_block_no(sessions):
+    """Blocks are numbered, not named after their contents - "Atlas - Block 7" is an
+    identity, whereas "Atlas - 15 questions" reads like a card count sitting right next
+    to Anki's actual card columns, which is exactly the confusion to avoid.
+
+    Numbered among the sessions still OPEN, so once you've finished everything the next
+    block starts back at 1 rather than climbing forever. All the number has to guarantee
+    is that two decks on screen at once can't share it, and finishing a session deletes
+    its deck - so counting finished ones bought nothing and just looked odd on a
+    freshly cleaned-up collection."""
+    n = 0
+    for s in sessions:
+        if s.get("finished"):
+            continue
+        try:
+            n = max(n, int(s.get("block") or 0))
+        except Exception:
+            continue
+    return n + 1
+
+
+def _unique_deck_name(col, base):
+    base = base.replace("::", " ").strip() or "block"     # "::" would make a subdeck
+    name, n = base, 2
+    while True:
+        try:
+            if not col.decks.id_for_name(name):
+                return name
+        except Exception:
+            return name
+        name = "%s (%d)" % (base, n)
+        n += 1
+
+
+def _build_filtered_deck(col, name, query, limit, reschedule):
+    from anki.decks import DeckId, FilteredDeckConfig
+    deck = col.sched.get_or_create_filtered_deck(deck_id=DeckId(0))
+    deck.name = name
+    cfg = deck.config
+    cfg.reschedule = reschedule
+    del cfg.search_terms[:]
+    cfg.search_terms.extend([
+        FilteredDeckConfig.SearchTerm(
+            search=query + " -is:suspended",
+            limit=max(int(limit), 1),          # the stock limit is far too low for a block
+            order=FilteredDeckConfig.SearchTerm.ADDED,
+        )
+    ])
+    return col.sched.add_or_update_filtered_deck(deck).id
+
+
+def _answered_since(col, cids, since_ms):
+    """Cards with a real answer logged after the session started. revlog.id is an
+    epoch-ms timestamp; button_chosen == 0 marks manual/rescheduled entries rather
+    than answers. Preview reviews are logged too, so this works in both modes."""
+    if not cids or not since_ms:
+        return set()
+    try:
+        rows = col.db.list(
+            "select distinct cid from revlog where id > ? and button_chosen > 0 "
+            "and cid in %s" % _ids2str(cids), since_ms)
+        return set(int(r) for r in rows)
+    except Exception:
+        return set()
+
+
+def start_block(queries=None, yields=None, label=None, reschedule=None, questions=None):
+    """Unsuspend a block's cards, gather them into their own filtered deck, and
+    drop the user straight into reviewing it.
+
+    `reschedule` is normally None: the setting lives in Anki (Atlas menu). An
+    explicit value still wins, so an older extension that sends its own toggle
+    keeps working."""
+    col = _collection()
+    query = (queries or [None])[0]
+    if not query:
+        raise Exception("no query given")
+    if reschedule is None:
+        reschedule = _block_reschedule()
+    started_ms = int(time.time() * 1000)
+
+    want = set(yields) if yields else None
+    matched = _matching_cards(col, query, want)
+    if not matched:
+        return {"sessionId": None, "matched": 0, "unsuspended": 0, "gathered": 0}
+
+    locked = []
+    for cid in matched:
+        try:
+            if col.get_card(cid).queue == -1:          # -1 == suspended
+                locked.append(cid)
+        except Exception:
+            continue
+    if locked:
+        try:
+            col.sched.unsuspend_cards(locked)
+        except AttributeError:
+            col.sched.unsuspendCards(locked)          # older Anki
+
+    sessions = _load_sessions()
+    block_no = _next_block_no(sessions)
+    name = _unique_deck_name(col, "Atlas - Block %d" % block_no)
+    try:
+        did = _build_filtered_deck(col, name, query, len(matched), bool(reschedule))
+    except Exception:
+        # Anki refuses to build a filtered deck that would gather nothing, and raises
+        # rather than returning an empty one. That means every matched card is held by
+        # ANOTHER filtered deck (Anki Maxer and friends) or is buried. We have already
+        # unsuspended by this point, so undo it - otherwise the collection is left
+        # changed with no session recorded to undo it with.
+        if locked:
+            try:
+                col.sched.suspend_cards(locked)
+            except AttributeError:
+                col.sched.suspendCards(locked)
+        return {"sessionId": None, "matched": len(matched), "unsuspended": 0,
+                "gathered": 0, "blocked": True, "reschedule": bool(reschedule)}
+
+    # Anything short of `matched` is held by another filtered deck (or is buried);
+    # the caller reports the gap rather than quietly under-delivering.
+    try:
+        gathered = len(col.decks.cids(did))
+    except Exception:
+        gathered = 0
+
+    # Older extensions send a text label ("15 questions") instead of a count.
+    if questions is None:
+        m = re.match(r"\s*(\d+)", str(label or ""))
+        questions = int(m.group(1)) if m else 0
+
+    sess = {
+        "id": str(started_ms),
+        "block": block_no,
+        "created": int(time.time()),
+        "startedMs": started_ms,
+        "questions": int(questions or 0),   # UWorld questions picked
+        "gathered": int(gathered),          # cards that made it into the deck
+        "deckId": int(did),
+        "deckName": name,
+        "reschedule": bool(reschedule),
+        "unsuspended": [int(c) for c in locked],   # the undo scope
+        "finished": False,
+    }
+    sessions.append(sess)
+    _save_sessions(sessions)
+
+    try:
+        col.decks.select(did)
+        mw.moveToState("review")
+    except Exception:
+        pass
+
+    return {"sessionId": sess["id"], "matched": len(matched),
+            "unsuspended": len(locked), "gathered": gathered,
+            "reschedule": bool(reschedule)}   # so the page can report the mode used
+
+
+def _reap_deleted_decks():
+    """If the user deleted a session's deck by hand, the session is over - that IS the
+    signal that they're done with it. So put it away properly rather than leaving a row
+    they can't get rid of: re-lock whatever it unlocked (minus anything they answered)
+    and retire the entry. Announced with a tooltip, so it is never silent."""
+    try:
+        col = _collection()
+        from anki.decks import DeckId
+    except Exception:
+        return 0
+    reaped = 0
+    for s in list(_load_sessions()):
+        if s.get("finished") or not s.get("deckId"):
+            continue
+        try:
+            if col.decks.name_if_exists(DeckId(int(s["deckId"]))) is not None:
+                continue                       # deck still there - leave it alone
+        except Exception:
+            continue
+        try:
+            res = finish_block(s.get("id"))    # re-loads the ledger itself, so this is safe
+            reaped += 1
+            n = res.get("resuspended", 0)
+            tooltip("Atlas: %s was deleted, so the session was closed%s."
+                    % (s.get("deckName") or "that deck",
+                       (" - %d card(s) put back" % n) if n else ""),
+                    period=4000)
+        except Exception:
+            pass
+    return reaped
+
+
+def list_blocks():
+    """Every count is named, because three different ones are in play: questions
+    picked, cards gathered into the deck, and cards to re-lock on finish."""
+    _reap_deleted_decks()
+    out = []
+    try:
+        col = _collection()
+    except Exception:
+        col = None
+    sessions = _load_sessions()
+    retired = False
+    for s in sessions:
+        if s.get("finished"):
+            continue
+        # Deleting the deck by hand does NOT finish the session - the cards stay
+        # unlocked and the entry lingers. Flag it so the UI can say so, because the
+        # Finish button is still the only thing that will re-lock them.
+        deck_gone = False
+        if col is not None and s.get("deckId"):
+            try:
+                from anki.decks import DeckId
+                deck_gone = col.decks.name_if_exists(DeckId(int(s["deckId"]))) is None
+            except Exception:
+                deck_gone = False
+        # Deck deleted by hand AND nothing left to put back: this session can never do
+        # anything again, so retire it rather than leave a dead row cluttering the list.
+        # One WITH cards to re-lock is kept - those cards are still unlocked in the
+        # collection and Finish is the only thing that will suspend them again.
+        if deck_gone and not (s.get("unsuspended") or []):
+            s["finished"] = True
+            s["finishedAt"] = int(time.time())
+            retired = True
+            continue
+        block = s.get("block")
+        out.append({
+            "id": s.get("id"),
+            "block": block,
+            # sessions created before numbering fall back to their old label
+            "title": ("Block %d" % block) if block else (s.get("label") or s.get("deckName") or "Block"),
+            "questions": int(s.get("questions") or 0),
+            "gathered": int(s.get("gathered") or 0),
+            "cards": len(s.get("unsuspended") or []),   # will be re-locked on finish
+            "created": s.get("created"),
+            "deckName": s.get("deckName"),
+            "deckGone": deck_gone,
+            "reschedule": bool(s.get("reschedule", True)),
+        })
+    if retired:
+        _save_sessions(sessions)
+    return out
+
+
+def finish_block(sessionId=None):
+    """Put a session away: return its cards home, delete the temp deck, and re-lock
+    the cards it unlocked - except the ones actually answered, which have earned
+    their place. In preview mode nothing was earned, so everything goes back."""
+    col = _collection()
+    sessions = _load_sessions()
+    sess = None
+    for s in sessions:
+        if s.get("id") == sessionId:
+            sess = s
+            break
+    if sess is None:
+        raise Exception("no such Atlas session")
+
+    did = sess.get("deckId")
+    returned = 0
+    if did:
+        try:
+            returned = len(col.decks.cids(int(did)))
+        except Exception:
+            returned = 0
+        try:
+            col.sched.empty_filtered_deck(int(did))    # cards go back to their home decks
+        except Exception:
+            pass
+        try:
+            col.decks.remove([int(did)])
+        except Exception:
+            pass
+
+    recorded = [int(c) for c in (sess.get("unsuspended") or [])]
+    keep = set()
+    if sess.get("reschedule", True):
+        keep = _answered_since(col, recorded, int(sess.get("startedMs") or 0))
+
+    # Never re-lock a card some other open session is still holding.
+    held = set()
+    for s in sessions:
+        if s is sess or s.get("finished"):
+            continue
+        held.update(int(c) for c in (s.get("unsuspended") or []))
+
+    to_lock = [c for c in recorded if c not in keep and c not in held]
+    if to_lock:
+        try:
+            col.sched.suspend_cards(to_lock)           # unknown ids are ignored
+        except AttributeError:
+            col.sched.suspendCards(to_lock)            # older Anki
+
+    sess["finished"] = True
+    sess["finishedAt"] = int(time.time())
+    sess["resuspended"] = len(to_lock)
+    sess["unsuspended"] = []      # done with the undo scope; a big block stored hundreds of ids
+    _save_sessions(sessions)
+    return {"returned": returned, "resuspended": len(to_lock), "kept": len(keep)}
+
+
 def maturity_for_queries(queries):
     """For each Anki search, classify its cards into maturity buckets.
     new / learning / young (<21d) / mature (>=21d) / suspended."""
@@ -310,6 +691,68 @@ def get_tags():
     return list(_collection().tags.all())
 
 
+def _anki_version():
+    try:
+        from anki.buildinfo import version
+        return str(version)
+    except Exception:
+        pass
+    try:
+        return str(aqt.appVersion)
+    except Exception:
+        return "?"
+
+
+# Census of the UWorld tag layouts actually present. This is the one thing that
+# explains almost every "it finds no cards" report: either the exam picked in the
+# popup doesn't match any step here, or the deck's tags are a layout Atlas isn't
+# matching, or the deck has no #UWorld tags at all. Counts only - no tag text, no
+# card content, nothing personal, so it is safe to paste into a DM.
+_UW_RE = re.compile(r"^#AK_Step(\d)_v(\d+)::#UWorld::(.+)$")
+_FLAT_RE = re.compile(r"^\d+$")
+_NESTED_RE = re.compile(r"^[^:]+(?:::[^:]+)*::\d+$")
+_YIELD_RE = re.compile(r"^#AK_Step(\d)_v(\d+)::(?:#Low/HighYield|\^Other::\^HighYield)::")
+
+
+def diagnostics():
+    out = {"addon": ADDON_VERSION, "anki": _anki_version()}
+    try:
+        tags = list(_collection().tags.all())
+    except Exception:
+        tags = []
+    out["tagsTotal"] = len(tags)
+
+    uworld, yields = {}, set()
+    for t in tags:
+        m = _UW_RE.match(t)
+        if m:
+            key = "Step%s_v%s" % (m.group(1), m.group(2))
+            d = uworld.setdefault(key, {"nested": 0, "flat": 0, "other": 0})
+            rest = m.group(3)
+            if _FLAT_RE.match(rest):
+                d["flat"] += 1
+            elif _NESTED_RE.match(rest):
+                d["nested"] += 1
+            else:
+                d["other"] += 1
+            continue
+        y = _YIELD_RE.match(t)
+        if y:
+            yields.add("Step%s_v%s" % (y.group(1), y.group(2)))
+    out["uworld"] = uworld
+    out["yield"] = sorted(yields)
+
+    try:
+        out["notes"] = _collection().note_count()
+    except Exception:
+        pass
+    try:
+        out["openSessions"] = len(list_blocks())
+    except Exception:
+        pass
+    return out
+
+
 def dispatch(action, params):
     if action == "version":
         return API_VERSION
@@ -329,6 +772,16 @@ def dispatch(action, params):
         return cards_for_queries(params.get("queries"))
     if action == "unsuspendForQueries":
         return unsuspend_for_queries(params.get("queries"), params.get("yields"))
+    if action == "startBlock":
+        return start_block(params.get("queries"), params.get("yields"),
+                           params.get("label"), params.get("reschedule"),
+                           params.get("questions"))
+    if action == "listBlocks":
+        return list_blocks()
+    if action == "diagnostics":
+        return diagnostics()
+    if action == "finishBlock":
+        return finish_block(params.get("sessionId"))
     raise Exception("Atlas Bridge does not support action: %s" % action)
 
 
@@ -428,6 +881,124 @@ def start_server():
     threading.Thread(target=_server.serve_forever, daemon=True).start()
 
 
+# --------------------------- shared UI bits ---------------------------
+def _openlink(url):
+    try:
+        from aqt.utils import openLink
+        openLink(url)
+    except Exception:
+        try:
+            from aqt.qt import QDesktopServices, QUrl
+            QDesktopServices.openUrl(QUrl(url))
+        except Exception:
+            pass
+
+
+def _finish_message(info):
+    n = info["cards"] if info else 0
+    if info is not None and not info["reschedule"]:
+        return ("Put this session away?\n\nThe temporary deck is removed and all %d "
+                "card(s) Atlas unlocked go back to suspended. This was a preview "
+                "session, so no scheduling was changed." % n)
+    return ("Put this session away?\n\nThe temporary deck is removed. Cards you "
+            "answered stay in your reviews; the rest of the %d card(s) Atlas "
+            "unlocked are suspended again." % n)
+
+
+def _confirm_and_finish(sid, parent=None):
+    """Ask, then put a session away. Shared by the menu and the status window so the
+    wording and the confirmation can't drift apart."""
+    info = None
+    try:
+        for x in list_blocks():
+            if x["id"] == sid:
+                info = x
+                break
+    except Exception:
+        pass
+    try:
+        from aqt.utils import askUser
+        if not askUser(_finish_message(info), parent=parent or mw):
+            return False
+    except Exception:
+        pass
+    try:
+        res = finish_block(sid)
+        tooltip("Atlas: %d card(s) suspended again, %d kept in your reviews."
+                % (res.get("resuspended", 0), res.get("kept", 0)), period=4000)
+        return True
+    except Exception as exc:
+        tooltip("Atlas: couldn't finish that session (%s)" % exc, period=5000)
+        return False
+
+
+# --------------------------- menu bar entry ---------------------------
+_menu = {"obj": None}
+
+
+def install_menu():
+    """A top-level 'Atlas' menu next to AnKing/AnkiHub, so the status window and any
+    open sessions are one click away instead of buried in Tools > Add-ons > Config.
+    Rebuilt on aboutToShow, so the session list is always current without polling."""
+    from aqt.qt import QMenu, QAction
+
+    if _menu["obj"] is not None:
+        return
+    menu = QMenu("Atlas", mw)
+    try:
+        mw.form.menubar.addMenu(menu)
+    except Exception:
+        return
+    _menu["obj"] = menu
+
+    def rebuild():
+        menu.clear()
+        status = QAction("Atlas status…", menu)
+        status.triggered.connect(open_status_dialog)
+        menu.addAction(status)
+
+        resched = QAction("Block reps count as real reviews", menu)
+        resched.setCheckable(True)
+        resched.setChecked(_block_reschedule())
+        resched.setToolTip("Off = preview only: you see the block's cards but nothing "
+                           "in your scheduling changes.")
+        resched.triggered.connect(lambda checked: _set_block_reschedule(checked))
+        menu.addAction(resched)
+
+        try:
+            sessions = list_blocks()
+        except Exception:
+            sessions = []
+        if sessions:
+            menu.addSeparator()
+            head = QAction("Open study sessions", menu)
+            head.setEnabled(False)          # a label, not a command
+            menu.addAction(head)
+            for s in sessions:
+                bits = []
+                if s["questions"]:
+                    bits.append("%d question%s" % (s["questions"], "" if s["questions"] == 1 else "s"))
+                bits.append("%d to re-lock" % s["cards"])
+                if s.get("deckGone"):
+                    bits.append("deck already deleted")
+                label = "Finish %s — %s" % (s["title"], ", ".join(bits))
+                act = QAction(label, menu)
+                act.triggered.connect(
+                    lambda _checked=False, sid=s["id"]: _confirm_and_finish(sid, mw))
+                menu.addAction(act)
+
+        menu.addSeparator()
+        guide = QAction("Setup guide", menu)
+        guide.triggered.connect(lambda: _openlink(GUIDE_URL))
+        menu.addAction(guide)
+        kofi = QAction("Support Atlas on Ko-fi", menu)
+        kofi.triggered.connect(lambda: _openlink(KOFI_URL))
+        menu.addAction(kofi)
+
+    menu.aboutToShow.connect(rebuild)
+    rebuild()
+
+
 # --------------------------- status window ---------------------------
 def _connected():
     return (time.time() - _last_seen["t"]) < SEEN_WINDOW
@@ -436,7 +1007,8 @@ def _connected():
 def open_status_dialog():
     """Shown when the user clicks 'Config' on the add-on. No JSON, no port -
     just whether Anki and the browser extension are talking to each other."""
-    from aqt.qt import QDialog, QVBoxLayout, QLabel, QPushButton, QFrame, QTimer
+    from aqt.qt import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+                        QTimer, QScrollArea, QWidget, Qt)
     try:
         from aqt.utils import openLink as _open
     except Exception:
@@ -461,7 +1033,7 @@ def open_status_dialog():
 
     dlg = QDialog(mw)
     dlg.setWindowTitle("Atlas Bridge")
-    dlg.setMinimumWidth(380)
+    dlg.setMinimumWidth(560)   # wide enough for a session to fit on one line
     dlg.setStyleSheet(
         "QLabel{color:%s;}"
         "QPushButton{border-radius:8px;padding:9px 12px;font-size:13px;}"
@@ -499,6 +1071,150 @@ def open_status_dialog():
     hint.setStyleSheet("font-size:12px;color:%s;" % muted)
     root.addWidget(hint)
 
+    # ---- open block sessions, each with a way to put it back ----
+    sessions_box = QVBoxLayout()
+    sessions_box.setSpacing(6)
+    root.addLayout(sessions_box)
+
+    def _clear(lay):
+        while lay.count():
+            item = lay.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+            else:
+                child = item.layout()
+                if child is not None:
+                    _clear(child)
+
+    def on_finish(sid):
+        _confirm_and_finish(sid, dlg)
+        render_sessions()
+
+    def on_finish_all():
+        try:
+            items = list_blocks()
+        except Exception:
+            items = []
+        if not items:
+            return
+        total = sum(x["cards"] for x in items)
+        try:
+            from aqt.utils import askUser
+            if not askUser(
+                "Put all %d session(s) away?\n\nTheir temporary decks are removed and %d "
+                "card(s) go back to suspended - except any you actually answered, which "
+                "stay in your reviews." % (len(items), total), parent=dlg):
+                return
+        except Exception:
+            pass
+        done = locked = 0
+        for x in items:
+            try:
+                res = finish_block(x["id"])
+                done += 1
+                locked += res.get("resuspended", 0)
+            except Exception:
+                pass
+        tooltip("Atlas: %d session(s) put away, %d card(s) suspended again."
+                % (done, locked), period=4000)
+        render_sessions()
+
+    def render_sessions():
+        _clear(sessions_box)
+        try:
+            items = list_blocks()
+        except Exception:
+            items = []
+        if not items:
+            return
+
+        # Header: count on the left, bulk action on the right.
+        head_row = QHBoxLayout()
+        head = QLabel("Open study sessions (%d)" % len(items))
+        head.setStyleSheet("font-size:12px;font-weight:700;color:%s;" % text)
+        head_row.addWidget(head)
+        head_row.addStretch(1)
+        if len(items) > 1:
+            all_btn = QPushButton("Finish all")
+            all_btn.setObjectName("ghost")
+            all_btn.setStyleSheet("padding:3px 10px;font-size:11px;")
+            all_btn.clicked.connect(on_finish_all)
+            head_row.addWidget(all_btn)
+        sessions_box.addLayout(head_row)
+
+        # One compact line per session, in a scroll area so twenty sessions can't grow
+        # the dialog past the screen - it used to be a tall card each, with a full-width
+        # button, and six of them ran off the bottom.
+        holder = QWidget()
+        hl = QVBoxLayout(holder)
+        hl.setContentsMargins(0, 0, 0, 0)
+        hl.setSpacing(4)
+        for s in items:
+            row = QFrame()
+            row.setObjectName("card")
+            rl = QHBoxLayout(row)
+            rl.setContentsMargins(10, 6, 8, 6)
+            rl.setSpacing(8)
+
+            title = QLabel(s["title"])
+            title.setStyleSheet("font-size:12px;font-weight:600;color:%s;" % text)
+            rl.addWidget(title)
+
+            bits = []
+            if s["questions"]:
+                bits.append("%d q" % s["questions"])
+            if s["gathered"]:
+                bits.append("%d cards" % s["gathered"])
+            bits.append("%d to re-lock" % s["cards"])
+            if not s["reschedule"]:
+                bits.append("preview")
+            if s.get("deckGone"):
+                bits.append("deck deleted")
+            if s["created"]:
+                try:
+                    bits.append(time.strftime("%b %d %H:%M", time.localtime(int(s["created"]))))
+                except Exception:
+                    pass
+            meta = QLabel(" · ".join(bits))
+            meta.setStyleSheet("font-size:11px;color:%s;" % muted)
+            rl.addWidget(meta)
+            rl.addStretch(1)
+
+            btn = QPushButton("Finish")
+            btn.setObjectName("ghost")
+            btn.setStyleSheet("padding:3px 12px;font-size:11px;")
+            btn.clicked.connect(lambda _checked=False, sid=s["id"]: on_finish(sid))
+            rl.addWidget(btn)
+            hl.addWidget(row)
+        hl.addStretch(1)
+
+        area = QScrollArea()
+        area.setWidget(holder)
+        area.setWidgetResizable(True)
+        area.setFrameShape(QFrame.Shape.NoFrame)
+        area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # ~4 rows before it starts scrolling instead of growing
+        area.setMaximumHeight(min(4, len(items)) * 40 + 8)
+        sessions_box.addWidget(area)
+        try:
+            dlg.adjustSize()
+        except Exception:
+            pass
+
+    # Only rebuild when the set of sessions actually changes - re-creating the rows
+    # every tick would steal clicks from the Finish buttons.
+    seen = {"sig": None}
+
+    def sync_sessions():
+        try:
+            sig = tuple(sorted(x["id"] or "" for x in list_blocks()))
+        except Exception:
+            sig = ()
+        if sig != seen["sig"]:
+            seen["sig"] = sig
+            render_sessions()
+
     def refresh():
         if _connected():
             status.setText("\u2705  Atlas is ready")
@@ -511,6 +1227,7 @@ def open_status_dialog():
                         "Atlas Bridge itself is installed correctly here.")
 
     refresh()
+    sync_sessions()
 
     refresh_btn = QPushButton("Refresh status")
     refresh_btn.setObjectName("ghost")
@@ -530,6 +1247,7 @@ def open_status_dialog():
     # Live-refresh so that simply opening the extension flips this to "ready".
     timer = QTimer(dlg)
     timer.timeout.connect(refresh)
+    timer.timeout.connect(sync_sessions)
     timer.start(2000)
 
     dlg.exec()
@@ -543,3 +1261,4 @@ except Exception:
 
 # Bind once the main window exists (fires on the main thread).
 gui_hooks.main_window_did_init.append(start_server)
+gui_hooks.main_window_did_init.append(install_menu)
