@@ -321,6 +321,36 @@ Support helps with bug fixes, updates, UWorld/Anki compatibility, and new featur
 
 ## Changelog
 
+### v2.3
+
+* **High Yield Only is now a Yield range slider.** The scale runs *Low → Rel. low → Normal → Rel. high → High*, and Atlas keeps everything from the dot up: all the way left keeps every card, *Rel. high* keeps High and Rel. high cards, all the way right keeps only High. It applies to the buttons, Easy Mode and Study block.
+* *Normal* covers AnKing's "HighYield-temporary" tag and cards with no yield tag at all.
+* The slider only appears for **Step 1 / COMLEX 1**, the only AnKing deck with yield tags. Step 2 and Step 3 no longer get "No high-yield cards" on every block.
+* If you had High Yield Only on, it carries over as *Rel. high and up*, the same cards as before.
+* Extension 2.3.0. The Anki add-on did not change.
+
+### v2.2
+
+* **Study block**: a new **Anki: Study block** button unlocks that block's cards, gathers them into a deck of their own (`Atlas - Block 1`, `Block 2`, …) and opens it, so you study just that block instead of adding it to a huge queue.
+* **Undoable**: finishing a session removes the temporary deck and re-suspends the cards Atlas unlocked that you didn't get to. Cards you answered stay in your reviews.
+* New **Atlas menu** in Anki's menu bar, next to AnKing and AnkiHub: status, your open sessions, and **Block reps count as real reviews**. Turn that off for a preview that changes no scheduling at all.
+* Compact status window with **Finish all**. Deleting a session's deck by hand now closes the session and puts its cards back.
+* **Copy diagnostics** button in the popup: copies a short report (versions, exam, which UWorld tag layouts your deck has) to paste when something isn't working. Counts only, no card content.
+* If the cards are already in another filtered deck (Anki Maxer, or your own), Atlas says so and changes nothing.
+* Errors that come from Anki no longer say "Couldn't reach Anki" when Anki answered fine.
+* Updating the extension no longer leaves open UWorld tabs throwing errors, and a stuck request now times out instead of hanging.
+* Fixed a memory leak in the Atlas menu.
+* Extension 2.2.0–2.2.4, Atlas Bridge 2.1–2.9. **Update the add-on and restart Anki.** Needs Anki 2.1.45 or newer.
+
+### v2.1
+
+* **Reworked image overlay**: Physeo and AnKing (Extra field) images, clickable image buttons in the resource panel, and tabs to switch sources without closing the overlay.
+* Hotkeys: **F** First Aid, **S** Sketchy, **P** Pixorize, **Y** Physeo, **K** AnKing, `[` `]` to switch source, `-` `+` to zoom.
+* Images show at their real size, so small ones stay sharp instead of being stretched. Zoom goes from 25% to 300% and is remembered.
+* **Fixed: some questions found zero cards.** Tags with no middle part (`#AK_Step3_v12::#UWorld::12345`), which is basically all of Step 3 plus older decks, weren't matched. They are now.
+* **Much faster**: a 40-question results page went from about 17 seconds (sometimes timing out) to under half a second.
+* Extension 2.1.0–2.1.2. The Anki add-on did not change. Needs Anki 2.1.36 or newer.
+
 ### v2.0
 
 * Redesigned popup with grouped **Study actions** and **Extras**, plus a live "Ready" connection status.
